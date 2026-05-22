@@ -1,0 +1,16 @@
+# C++ / C objects and binaries
+*.o
+*.a
+*.so
+*.out
+build/
+bin/
+
+# IDE/Editor files
+.vscode/
+.idea/
+.DS_Store
+
+# Database temp files (tùy vào cách bạn lưu trữ)
+*.log
+*.db
