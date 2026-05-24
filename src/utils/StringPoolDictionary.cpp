@@ -105,3 +105,20 @@ uint32_t StringPoolDictionary::get_or_create_id(const std::string& str) {
 
     return new_id;
 }
+
+
+// Return 0 if not found, otherwise return the ID.
+uint32_t StringPoolDictionary::get_id(const std::string& str) const {
+    const char* c_str = str.c_str();
+    uint32_t index = hash_string(c_str) % table_capacity_;
+    uint32_t start_index = index;
+
+    while (table_[index].is_occupied) {
+        if (std::strcmp(pool_ + table_[index].pool_offset, c_str) == 0) {
+            return table_[index].id;
+        }
+        index = (index + 1) % table_capacity_;
+        if (index == start_index) break;
+    }
+    return 0; // Not found
+}
