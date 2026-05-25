@@ -1,0 +1,27 @@
+# Trình biên dịch và CMake
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+
+# File thực thi và Thư viện đã dịch
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+run_test
+halo_app
+
+# File Database và Log
+*.db
+*.log
+
+# Tài liệu sinh tự động (Doxygen)
+docs/html/
+docs/latex/
+
+# File hệ điều hành (Mac/Windows)
+.DS_Store
+Thumbs.db
