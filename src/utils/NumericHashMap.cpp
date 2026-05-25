@@ -1,4 +1,4 @@
-#include "NumericHashMap.h"
+#include "../../include/graphlite/internal/NumericHashMap.h"
 #include <cstdint>
 #include <cstddef>
 

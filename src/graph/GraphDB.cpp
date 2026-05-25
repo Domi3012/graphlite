@@ -88,3 +88,8 @@ void GraphDB::sync() {
 GraphDB::~GraphDB() {
     // Do nothing
 }
+
+std::string GraphDB::getNodeName(NodeID id) const {
+    // StringPoolDictionary của bạn chắc chắn phải có hàm get_string(id)
+    return node_dict_.get_string(id); 
+}

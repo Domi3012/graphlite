@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <cstdint>
-#include "../utils/MiniVector.h"
+#include "MiniVector.h"
 
 namespace graphlite {
 

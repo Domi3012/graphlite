@@ -39,6 +39,8 @@ public:
     uint32_t get_or_create_id(const std::string& str);
 
     uint32_t get_id(const std::string& str) const;
+
+    std::string get_string(uint32_t id) const;
 };
 
 } // namespace utils

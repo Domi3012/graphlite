@@ -1,4 +1,4 @@
-#include "StringPoolDictionary.h"
+#include "../../include/graphlite/internal/StringPoolDictionary.h"
 #include <cstring>
 
 using namespace graphlite::utils;
@@ -121,4 +121,13 @@ uint32_t StringPoolDictionary::get_id(const std::string& str) const {
         if (index == start_index) break;
     }
     return 0; // Not found
+}
+
+std::string StringPoolDictionary::get_string(uint32_t id) const {
+    for (uint32_t i = 0; i < table_capacity_; ++i) {
+        if (table_[i].is_occupied && table_[i].id == id) {
+            return std::string(pool_ + table_[i].pool_offset);
+        }
+    }
+    return ""; // Not found
 }

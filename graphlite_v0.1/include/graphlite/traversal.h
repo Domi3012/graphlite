@@ -10,7 +10,7 @@
 
 #pragma once
 #include "GraphDB.h"
-#include "internal/MiniVector.h"
+#include "../../src/utils/MiniVector.h"
 
 namespace graphlite {
 

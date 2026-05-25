@@ -1,4 +1,4 @@
-#include "BitcaskEngine.h"
+#include "../../include/graphlite/internal/BitcaskEngine.h"
 #include <stdexcept>
 
 namespace graphlite {

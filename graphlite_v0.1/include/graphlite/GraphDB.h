@@ -15,9 +15,9 @@
 // Nhúng các mảnh ghép nội bộ
 #include "types.h"
 #include "Schema.h"
-#include "internal/MiniVector.h"
-#include "internal/StringPoolDictionary.h"
-#include "internal/BitcaskEngine.h"
+#include "../../src/utils/MiniVector.h"
+#include "../../src/utils/StringPoolDictionary.h"
+#include "../../src/engine/BitcaskEngine.h"
 
 namespace graphlite {
 
@@ -109,13 +109,6 @@ public:
      * @return NodeID ID của đỉnh. Trả về 0 nếu đỉnh không tồn tại.
      */
     NodeID getNodeId(const std::string& node_name);
-
-    /**
-     * @brief Tìm Name của một Đỉnh dựa vào ID.
-     * @param id ID của Đỉnh.
-     * @return std::string Tên của đỉnh. Trả về chuỗi rỗng nếu đỉnh không tồn tại.
-     */
-    std::string getNodeName(NodeID id) const;
 
     /**
      * @brief Nối 2 đỉnh lại bằng một Cạnh mang gói dữ liệu nhị phân (Opaque Payload).

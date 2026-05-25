@@ -1,7 +1,7 @@
 #pragma once
 #include "IStorage.h"
-#include "../utils/MiniVector.h"
-#include "../utils/NumericHashMap.h" // Dùng đúng Bảng băm Số nguyên
+#include "MiniVector.h"
+#include "NumericHashMap.h" // Dùng đúng Bảng băm Số nguyên
 #include <fstream>
 #include <string>
 
