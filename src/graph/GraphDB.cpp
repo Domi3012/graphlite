@@ -1,4 +1,4 @@
-#include "../../include/graphlite/graphDB.h"
+#include "../../include/graphlite/GraphDB.h"
 
 using namespace graphlite;
 
@@ -83,4 +83,8 @@ void GraphDB::sync() {
 
     // Ra lệnh cho Bitcask xả (flush) toàn bộ OS Cache xuống mâm đĩa vật lý
     storage_.sync();
+}
+
+GraphDB::~GraphDB() {
+    // Do nothing
 }
