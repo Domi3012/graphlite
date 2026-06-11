@@ -12,7 +12,7 @@
 #pragma once
 #include <string>
 #include <cstdint>
-#include "../../src/utils/StringPoolDictionary.h"
+#include "internal/StringPoolDictionary.h"
 #include "types.h"
 
 namespace graphlite {

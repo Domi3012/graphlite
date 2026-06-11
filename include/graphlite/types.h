@@ -1,94 +1,185 @@
 /**
  * @file types.h
- * @brief Định nghĩa các kiểu dữ liệu cốt lõi và cấu trúc Cạnh (Edge) cho GraphLite.
- * @version 0.1
- * @date 2026-05
- * * Các cấu trúc trong file này được thiết kế theo chuẩn POD (Plain Old Data) 
- * để tối ưu hóa việc tuần tự hóa (Serialization) và thân thiện với CPU Cache.
+ * @brief Định nghĩa kiểu dữ liệu cốt lõi, cấu trúc Edge/Node, và macro cấu hình thư viện.
+ * @version 1.0
+ * @date 2026-06
+ *
+ * File này là nền tảng của toàn bộ GraphLite:
+ * - Macro cấu hình library mode (compiled vs header-only)
+ * - Kiểu định danh hệ thống (NodeID, EdgeType, PageID, SlotID)
+ * - Cấu trúc vật lý GenericEdge (RAM), DiskEdge (đĩa), NodeRecord (đĩa)
+ *
+ * Tất cả struct POD được thiết kế với natural alignment để tránh padding.
  */
 
 #pragma once
+
+// ============================================================
+// LIBRARY MODE CONFIGURATION (fmt/spdlog style)
+// ============================================================
+//
+// Có 3 trạng thái:
+//
+// 1. GRAPHLITE_HEADER_ONLY defined (bởi user hoặc CMake)
+//    → Mọi implementation inline trong header
+//    → Không cần link library
+//
+// 2. GRAPHLITE_IMPLEMENTATION defined (bởi src/graphlite.cpp)
+//    → Implementation compile 1 lần trong TU này
+//    → Tạo ra libgraphlite.a
+//
+// 3. Không define gì (user include bình thường, compiled mode)
+//    → Chỉ thấy declarations
+//    → Link với libgraphlite.a
+// ============================================================
+
+#if defined(GRAPHLITE_HEADER_ONLY)
+    #define GRAPHLITE_FUNC inline
+    #ifndef GRAPHLITE_IMPL_GUARD
+        #define GRAPHLITE_IMPL_GUARD
+    #endif
+#elif defined(GRAPHLITE_IMPLEMENTATION)
+    #define GRAPHLITE_FUNC
+    #ifndef GRAPHLITE_IMPL_GUARD
+        #define GRAPHLITE_IMPL_GUARD
+    #endif
+#endif
+// Nếu không define gì: GRAPHLITE_FUNC và GRAPHLITE_IMPL_GUARD không tồn tại
+// → Chỉ declarations visible → cần link library
+
+// ============================================================
+// SYSTEM INCLUDES
+// ============================================================
 #include <cstdint>
-#include <cstring>   // Cho std::memset, std::memcpy
-#include <algorithm> // Cho std::min
+#include <cstring>
+#include <algorithm>
 
 namespace graphlite {
 
-// ==================================================
+// ============================================================
 // ĐỊNH DANH HỆ THỐNG (SYSTEM IDENTIFIERS)
-// ==================================================
+// ============================================================
 
-/** * @typedef NodeID
+/**
+ * @typedef NodeID
  * @brief Định danh nguyên thủy của Đỉnh.
- * Sử dụng số nguyên không dấu 32-bit, cung cấp không gian định danh cho ~4.2 tỷ đỉnh.
+ * Sử dụng số nguyên không dấu 32-bit, cung cấp không gian cho ~4.2 tỷ đỉnh.
  */
 using NodeID = uint32_t;
 
-/** * @typedef NodeType
+/**
+ * @typedef NodeType
  * @brief Định danh phân loại Đỉnh (Ví dụ: User, Device).
- * Sử dụng 8-bit để tiết kiệm RAM, giới hạn tối đa 255 loại đỉnh khác nhau.
+ * 8-bit, giới hạn tối đa 255 loại.
  */
 using NodeType = uint8_t;
 
-/** * @typedef EdgeType
+/**
+ * @typedef EdgeType
  * @brief Định danh phân loại Cạnh (Ví dụ: USES, CONNECTS).
- * Giới hạn tối đa 255 loại cạnh khác nhau.
+ * 8-bit, giới hạn tối đa 255 loại.
  */
 using EdgeType = uint8_t;
 
-// ==================================================
-// CẤU TRÚC VẬT LÝ CỦA MẠNG LƯỚI (GRAPH STRUCTURES)
-// ==================================================
-
-/** * @brief Kích thước tối đa của gói hàng mờ (Opaque Payload).
- * @note Con số 11 được tính toán cực kỳ có chủ đích: 
- * 4 bytes (NodeID) + 1 byte (EdgeType) + 11 bytes (Payload) = ĐÚNG 16 BYTES.
- * Kích thước lũy thừa của 2 này giúp CPU đẩy mảng GenericEdge vào L1/L2 Cache 
- * với tốc độ vật lý tối đa.
+/**
+ * @typedef PageID
+ * @brief Định danh trang trong edge file (edges.gldb).
  */
-constexpr uint8_t MAX_PAYLOAD_SIZE = 11;
+using PageID = uint32_t;
+
+/**
+ * @typedef SlotID
+ * @brief Định danh slot bên trong một page.
+ */
+using SlotID = uint16_t;
+
+/** @brief Giá trị sentinel cho PageID — biểu thị "không có page". */
+constexpr PageID NULL_PAGE = 0xFFFFFFFF;
+
+/** @brief Giá trị sentinel cho SlotID — biểu thị "không có slot". */
+constexpr SlotID NULL_SLOT = 0xFFFF;
+
+// ============================================================
+// CẤU TRÚC VẬT LÝ CỦA MẠNG LƯỚI (GRAPH STRUCTURES)
+// ============================================================
+
+/**
+ * @brief Kích thước payload tối đa cho mỗi edge.
+ * @note 23 bytes = 32B(DiskEdge) - 4B(target) - 1B(type) - 2B(next_page) - 2B(next_slot)
+ * GenericEdge (RAM view) cũng dùng 23B payload để tương thích 1:1 với DiskEdge.
+ */
+constexpr uint8_t MAX_PAYLOAD_SIZE = 23;
 
 /**
  * @struct GenericEdge
- * @brief Cấu trúc biểu diễn một Cạnh có hướng, mang dữ liệu tùy biến.
- * * * GenericEdge không trực tiếp định nghĩa thuộc tính (như timestamp, weight). 
- * Thay vào đó, nó mang một mảng byte vô danh (`payload`). Tầng Application 
- * (ví dụ: HALO) sẽ tự ép kiểu (reinterpret_cast) mảng byte này thành struct 
- * nghiệp vụ của riêng họ.
+ * @brief Cấu trúc biểu diễn một Cạnh trong RAM (API layer).
+ *
+ * GenericEdge không trực tiếp định nghĩa thuộc tính (timestamp, weight).
+ * Thay vào đó, nó mang một mảng byte vô danh (payload). Tầng Application
+ * sẽ tự ép kiểu (reinterpret_cast) mảng byte này thành struct nghiệp vụ.
+ *
+ * @note sizeof(GenericEdge) = 28 bytes (4 + 1 + 23, no padding).
  */
 struct GenericEdge {
-    NodeID target_node;                         ///< ID của đỉnh đích mà cạnh này trỏ tới.
-    EdgeType edge_type;                         ///< Mã phân loại mối quan hệ.
-    
-    uint8_t payload[MAX_PAYLOAD_SIZE];          ///< Vùng nhớ đệm (buffer) chứa dữ liệu tùy chỉnh.
+    NodeID   target_node;                    ///< ID của đỉnh đích mà cạnh này trỏ tới.
+    EdgeType edge_type;                      ///< Mã phân loại mối quan hệ.
+    uint8_t  payload[MAX_PAYLOAD_SIZE];      ///< Vùng nhớ đệm chứa dữ liệu tùy chỉnh (23 bytes).
 
-    /** * @brief Constructor mặc định. 
-     * Bắt buộc phải có để các cấu trúc dạng mảng (như MiniVector) có thể cấp phát vùng nhớ.
-     */
+    /** @brief Constructor mặc định. */
     GenericEdge() = default;
 
     /**
      * @brief Constructor khởi tạo Cạnh an toàn.
-     * Tự động sao chép dữ liệu từ Application vào Payload và ngăn chặn lỗi tràn bộ đệm.
-     * * @param target ID của đỉnh đích.
+     * @param target ID của đỉnh đích.
      * @param type Loại cạnh.
-     * @param raw_payload Con trỏ trỏ tới struct dữ liệu của Application (Ví dụ: &my_struct).
+     * @param raw_payload Con trỏ trỏ tới struct dữ liệu (Ví dụ: &my_struct).
      * @param payload_size Kích thước thực tế của struct (dùng sizeof).
      */
     GenericEdge(NodeID target, EdgeType type, const uint8_t* raw_payload, uint8_t payload_size)
         : target_node(target), edge_type(type) {
-        
-        // 1. Zero-out: Xóa sạch rác bộ nhớ cũ để tránh rò rỉ dữ liệu nhạy cảm
-        // và đảm bảo tính nhất quán khi ghi xuống ổ đĩa (Bitcask).
         std::memset(payload, 0, MAX_PAYLOAD_SIZE);
-        
-        // 2. Sao chép an toàn (Safe-copy): Chỉ copy tối đa MAX_PAYLOAD_SIZE bytes
-        // để phòng chống lỗi Buffer Overflow nếu Application truyền size quá lớn.
         if (raw_payload != nullptr && payload_size > 0) {
             uint8_t copy_size = std::min(payload_size, MAX_PAYLOAD_SIZE);
             std::memcpy(payload, raw_payload, copy_size);
         }
     }
 };
+
+/**
+ * @struct DiskEdge
+ * @brief Layout vật lý của Cạnh trên ổ đĩa — CHÍNH XÁC 32 bytes.
+ *
+ * 32 bytes = lũy thừa 2 → chính xác 2 edges trên 1 cache line (64B).
+ * Pointer arithmetic dùng bit-shift (<< 5) thay vì phép nhân.
+ *
+ * Chứa linked-list pointers (next_page, next_slot) cho index-free adjacency.
+ */
+struct DiskEdge {
+    NodeID   target_node;                    ///< 4 bytes — ID đỉnh đích.
+    EdgeType edge_type;                      ///< 1 byte  — Loại cạnh.
+    uint8_t  payload[23];                    ///< 23 bytes — Payload vô danh.
+    uint16_t next_page;                      ///< 2 bytes — Page chứa edge kế tiếp (linked list).
+    uint16_t next_slot;                      ///< 2 bytes — Slot của edge kế tiếp.
+};
+static_assert(sizeof(DiskEdge) == 32, "DiskEdge must be exactly 32 bytes");
+
+/**
+ * @struct NodeRecord
+ * @brief Metadata của một Đỉnh trên ổ đĩa — CHÍNH XÁC 32 bytes.
+ *
+ * Được sắp xếp theo natural alignment (uint32_t trước, uint16_t sau, uint8_t cuối)
+ * để tránh compiler padding.
+ *
+ * Nằm trong flat array trên mmap: record = &array[node_id] → O(1).
+ */
+struct NodeRecord {
+    uint32_t first_edge_page;                ///< 4 bytes — Page chứa edge đầu tiên.
+    uint32_t edge_count;                     ///< 4 bytes — Tổng số edges đi ra.
+    uint16_t first_edge_slot;                ///< 2 bytes — Slot chứa edge đầu tiên.
+    NodeType node_type;                      ///< 1 byte  — Phân loại đỉnh.
+    uint8_t  flags;                          ///< 1 byte  — Cờ trạng thái (0=empty, 1=active).
+    uint8_t  _reserved[20];                  ///< 20 bytes — Dự trữ cho tương lai.
+};
+static_assert(sizeof(NodeRecord) == 32, "NodeRecord must be exactly 32 bytes");
 
 } // namespace graphlite

@@ -1,96 +1,108 @@
 /**
  * @file traversal.h
- * @brief Định nghĩa cỗ máy duyệt đồ thị và giao diện Callback (Strategy Pattern).
- * @version 0.1
- * @date 2026-05
- * * * Module này tách biệt hoàn toàn thuật toán duyệt (Graph Traversal) 
- * khỏi logic nghiệp vụ của ứng dụng. Ứng dụng sẽ giao tiếp với lõi 
- * thông qua một bản hợp đồng (Interface) để quyết định đường đi.
+ * @brief Cỗ máy duyệt đồ thị — DFS, BFS, Strategy Pattern callback.
+ * @version 1.0 (STUB — sẽ hoàn thiện ở Phase 4)
  */
 
 #pragma once
 #include "GraphDB.h"
-#include "../../src/utils/MiniVector.h"
+#include "internal/MiniVector.h"
 
 namespace graphlite {
 
-// ==================================================
-// BẢN HỢP ĐỒNG CALLBACK (THE FILTER CONTRACT)
-// ==================================================
+// ============================================================
+// CALLBACK INTERFACE (Strategy Pattern)
+// ============================================================
 
 /**
  * @class ITraversalCallback
- * @brief Giao diện trừu tượng (Interface) định nghĩa Chiến lược duyệt đồ thị.
- * * * Ứng dụng (Client) bắt buộc phải kế thừa lớp này và triển khai các hàm ảo 
- * để điều khiển hành vi của thuật toán duyệt (ví dụ: lọc theo thời gian, 
- * lọc theo loại sự kiện).
+ * @brief Giao diện trừu tượng — ứng dụng implement để điều khiển duyệt đồ thị.
  */
 class ITraversalCallback {
 public:
-    /** @brief Hàm hủy ảo mặc định để đảm bảo giải phóng bộ nhớ đúng cách ở lớp con. */
     virtual ~ITraversalCallback() = default;
 
     /**
-     * @brief Hook kiểm duyệt: Được gọi MỖI KHI Engine định bước qua một Cạnh.
-     * @param current_node ID của Đỉnh hiện tại đang đứng.
-     * @param edge Tham chiếu hằng đến Cạnh (chứa Payload) sắp đi qua.
-     * @return true Nếu ứng dụng cho phép đi qua cạnh này.
-     * @return false Nếu ứng dụng muốn chặn (Cắt tỉa nhánh - Pruning) đường này.
+     * @brief Hook kiểm duyệt: Có cho phép đi qua cạnh này?
+     * @param current_node ID đỉnh hiện tại.
+     * @param edge Cạnh sắp đi qua.
+     * @return true nếu cho phép, false nếu cắt tỉa nhánh.
      */
     virtual bool shouldTraverse(NodeID current_node, const GenericEdge& edge) = 0;
-    
+
     /**
-     * @brief Hook báo cáo: Được gọi MỖI KHI Engine đặt chân đến một Đỉnh hợp lệ.
-     * @note Dùng để ứng dụng ghi log, đếm số bước nhảy, hoặc lưu lộ trình.
-     * @param node ID của Đỉnh vừa đặt chân tới.
+     * @brief Hook báo cáo: Được gọi khi Engine đặt chân đến một đỉnh.
+     * @param node ID đỉnh vừa đến.
      */
     virtual void onNodeVisited(NodeID node) = 0;
 };
 
-// ==================================================
-// CỖ MÁY DUYỆT ĐỒ THỊ (THE TRAVERSAL ENGINE)
-// ==================================================
+// ============================================================
+// TRAVERSAL ENGINE
+// ============================================================
 
 /**
  * @class TraversalEngine
- * @brief Cỗ máy thực thi các thuật toán trên đồ thị (Ví dụ: DFS).
- * * * Cỗ máy này chỉ giữ tham chiếu Chỉ đọc (Read-only) tới GraphDB, 
- * đảm bảo tuyệt đối không làm thay đổi cấu trúc dữ liệu trên RAM trong quá trình duyệt.
+ * @brief Cỗ máy thực thi DFS/BFS trên đồ thị.
  */
 class TraversalEngine {
 private:
-    /** @brief Tham chiếu hằng số tới Database chứa đồ thị. */
     const GraphDB& db_;
 
+    void dfsRecursive(NodeID current_node, int current_depth, int max_depth,
+                      ITraversalCallback& callback, utils::MiniVector<bool>& visited);
+
 public:
-    /**
-     * @brief Khởi tạo cỗ máy duyệt đồ thị.
-     * @param db Database mục tiêu cần duyệt.
-     */
     explicit TraversalEngine(const GraphDB& db);
 
     /**
-     * @brief Thuật toán Tìm kiếm theo chiều sâu (Depth-First Search - DFS).
-     * @note Độ phức tạp thời gian: Tối đa O(V + E) trên lý thuyết, nhưng thực tế
-     * sẽ nhanh hơn rất nhiều nhờ cơ chế cắt tỉa của tham số `max_depth` và `callback`.
-     * Thuật toán có sử dụng Backtracking để tránh mắc kẹt trong vòng lặp (Cycle).
-     * * @param start_node ID của Đỉnh bắt đầu hành trình.
-     * @param max_depth Giới hạn độ sâu đệ quy (Chống tràn Stack và giới hạn bán kính tìm kiếm).
-     * @param callback Đối tượng chứa logic lọc (Strategy) được chích (Inject) từ ứng dụng.
+     * @brief Depth-First Search.
+     * @param start_node Đỉnh bắt đầu.
+     * @param max_depth Giới hạn độ sâu.
+     * @param callback Chiến lược lọc.
      */
     void dfs(NodeID start_node, int max_depth, ITraversalCallback& callback);
 
-private:
-    /**
-     * @brief Hàm đệ quy nội bộ phục vụ cho DFS.
-     * @param current_node Đỉnh đang đứng ở bước đệ quy hiện tại.
-     * @param current_depth Độ sâu hiện tại (tính từ start_node là 0).
-     * @param max_depth Giới hạn độ sâu tối đa cho phép.
-     * @param callback Tham chiếu đến bộ lọc của ứng dụng.
-     * @param visited Mảng đánh dấu các đỉnh đã đi qua để chống lặp vòng (Cycle Detection).
-     */
-    void dfsRecursive(NodeID current_node, int current_depth, int max_depth, 
-                      ITraversalCallback& callback, utils::MiniVector<bool>& visited);
+    // TODO Phase 4: BFS, iterative DFS
 };
+
+// ============================================================
+// IMPLEMENTATION
+// ============================================================
+
+#ifdef GRAPHLITE_IMPL_GUARD
+
+GRAPHLITE_FUNC TraversalEngine::TraversalEngine(const GraphDB& db) : db_(db) {}
+
+GRAPHLITE_FUNC void TraversalEngine::dfs(NodeID start_node, int max_depth,
+                                          ITraversalCallback& callback) {
+    // Dynamic sizing thay vì hardcode 2M phần tử
+    size_t visited_size = 100000; // Sẽ được thay bằng node_store_.nodeCount() ở Phase 4
+    utils::MiniVector<bool> visited(visited_size, false);
+    dfsRecursive(start_node, 0, max_depth, callback, visited);
+}
+
+GRAPHLITE_FUNC void TraversalEngine::dfsRecursive(
+    NodeID current_node, int current_depth, int max_depth,
+    ITraversalCallback& callback, utils::MiniVector<bool>& visited) {
+
+    if (current_depth >= max_depth) return;
+    if (current_node >= visited.size() || visited[current_node]) return;
+
+    visited[current_node] = true;
+    callback.onNodeVisited(current_node);
+
+    const auto& edges = db_.getEdges(current_node);
+    for (size_t i = 0; i < edges.size(); ++i) {
+        const GenericEdge& edge = edges[i];
+        if (callback.shouldTraverse(current_node, edge)) {
+            dfsRecursive(edge.target_node, current_depth + 1, max_depth, callback, visited);
+        }
+    }
+
+    visited[current_node] = false;  // Backtracking
+}
+
+#endif // GRAPHLITE_IMPL_GUARD
 
 } // namespace graphlite
