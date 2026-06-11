@@ -182,4 +182,74 @@ struct NodeRecord {
 };
 static_assert(sizeof(NodeRecord) == 32, "NodeRecord must be exactly 32 bytes");
 
+// ============================================================
+// FILE HEADERS — Metadata ở đầu mỗi database file (64 bytes each)
+// ============================================================
+
+/** @brief Kích thước trang vật lý (trùng OS page size). */
+constexpr uint32_t GLDB_PAGE_SIZE = 4096;
+
+/** @brief Số DiskEdge tối đa trên 1 page: (4096 - 64) / 32 = 126. */
+constexpr uint16_t EDGES_PER_PAGE = (GLDB_PAGE_SIZE - 64) / sizeof(DiskEdge);
+
+/**
+ * @struct NodeFileHeader
+ * @brief Header ở đầu file `nodes.gldb` — CHÍNH XÁC 64 bytes.
+ *
+ * Layout:
+ * ```
+ * Byte: 0─3    4─7       8─11         12─15    16─63
+ *       magic  version   node_count   next_id  _reserved
+ * ```
+ */
+struct NodeFileHeader {
+    uint8_t  magic[4];           ///< 4 bytes — Nhận dạng file: {'G','L','N','D'}
+    uint32_t version;            ///< 4 bytes — Phiên bản format (= 1)
+    uint32_t node_count;         ///< 4 bytes — Số đỉnh đang active
+    uint32_t next_id;            ///< 4 bytes — ID kế tiếp sẽ cấp phát
+    uint8_t  _reserved[48];      ///< 48 bytes — Dự trữ tương lai
+};
+static_assert(sizeof(NodeFileHeader) == 64, "NodeFileHeader must be exactly 64 bytes");
+
+/**
+ * @struct EdgeFileHeader
+ * @brief Header ở đầu file `edges.gldb` — CHÍNH XÁC 64 bytes.
+ *
+ * Layout:
+ * ```
+ * Byte: 0─3    4─7       8─11        12─15        16─17          18─63
+ *       magic  version   page_size   page_count   free_page_head _reserved
+ * ```
+ */
+struct EdgeFileHeader {
+    uint8_t  magic[4];           ///< 4 bytes — Nhận dạng file: {'G','L','E','D'}
+    uint32_t version;            ///< 4 bytes — Phiên bản format (= 1)
+    uint32_t page_size;          ///< 4 bytes — Kích thước page (= 4096)
+    uint32_t page_count;         ///< 4 bytes — Tổng số pages đã cấp phát
+    uint16_t free_page_head;     ///< 2 bytes — Đầu free-list page (NULL_SLOT nếu hết)
+    uint8_t  _reserved[46];      ///< 46 bytes — Dự trữ tương lai
+};
+static_assert(sizeof(EdgeFileHeader) == 64, "EdgeFileHeader must be exactly 64 bytes");
+
+/**
+ * @struct PageHeader
+ * @brief Header ở đầu mỗi page trong `edges.gldb` — CHÍNH XÁC 64 bytes.
+ *
+ * Mỗi page 4096B = PageHeader(64B) + DiskEdge[126](4032B).
+ *
+ * Layout:
+ * ```
+ * Byte: 0─1          2─3             4─5             6─7              8─63
+ *       slot_count   slot_capacity   free_slot_head  next_free_page   _reserved
+ * ```
+ */
+struct PageHeader {
+    uint16_t slot_count;         ///< 2 bytes — Số slot đang sử dụng
+    uint16_t slot_capacity;      ///< 2 bytes — Sức chứa tối đa (= 126)
+    uint16_t free_slot_head;     ///< 2 bytes — Đầu free-list slot (NULL_SLOT nếu hết)
+    uint16_t next_free_page;     ///< 2 bytes — Page trống kế tiếp (cho file-level free list)
+    uint8_t  _reserved[56];      ///< 56 bytes — Dự trữ tương lai
+};
+static_assert(sizeof(PageHeader) == 64, "PageHeader must be exactly 64 bytes");
+
 } // namespace graphlite

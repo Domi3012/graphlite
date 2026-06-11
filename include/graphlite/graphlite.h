@@ -27,6 +27,7 @@
 // --- Platform & Storage ---
 #include "internal/Platform.h"
 #include "internal/MmapFile.h"
+#include "internal/NodeStore.h"
 
 // --- Metadata ---
 #include "Schema.h"
