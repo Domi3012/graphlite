@@ -25,3 +25,5 @@ docs/latex/
 # File hệ điều hành (Mac/Windows)
 .DS_Store
 Thumbs.db
+
+graphlite_v0.1/
