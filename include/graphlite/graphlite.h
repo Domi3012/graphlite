@@ -28,6 +28,7 @@
 #include "internal/Platform.h"
 #include "internal/MmapFile.h"
 #include "internal/NodeStore.h"
+#include "internal/PageManager.h"
 
 // --- Metadata ---
 #include "Schema.h"
