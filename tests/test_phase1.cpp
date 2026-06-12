@@ -11,6 +11,10 @@
  */
 
 #include <graphlite/graphlite.h>
+#include "../src/utils/NumericHashMap.h"
+#include "../src/utils/StringPoolDictionary.h"
+#include "../src/storage/MmapFile.h"
+#include "../src/utils/BinaryUtils.h"
 #include <iostream>
 #include <string>
 #include <cstring>

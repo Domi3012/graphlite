@@ -14,7 +14,7 @@
 #include <cstddef>
 #include <cstring>
 
-#include "../types.h"  // Cho GRAPHLITE_FUNC, GRAPHLITE_IMPL_GUARD
+#include <graphlite/types.h>  // Cho inline, GRAPHLITE_IMPL_GUARD
 
 namespace graphlite {
 namespace utils {
@@ -72,9 +72,8 @@ public:
 // IMPLEMENTATION
 // ============================================================
 
-#ifdef GRAPHLITE_IMPL_GUARD
 
-GRAPHLITE_FUNC size_t NumericHashMap::hash(uint64_t key) const {
+inline size_t NumericHashMap::hash(uint64_t key) const {
     key = (~key) + (key << 21);
     key = key ^ (key >> 24);
     key = (key + (key << 3)) + (key << 8);
@@ -85,7 +84,7 @@ GRAPHLITE_FUNC size_t NumericHashMap::hash(uint64_t key) const {
     return static_cast<size_t>(key);
 }
 
-GRAPHLITE_FUNC void NumericHashMap::rehash(size_t new_capacity) {
+inline void NumericHashMap::rehash(size_t new_capacity) {
     Entry* old_table = table_;
     size_t old_capacity = capacity_;
 
@@ -102,17 +101,17 @@ GRAPHLITE_FUNC void NumericHashMap::rehash(size_t new_capacity) {
     delete[] old_table;
 }
 
-GRAPHLITE_FUNC NumericHashMap::NumericHashMap(size_t initial_capacity)
+inline NumericHashMap::NumericHashMap(size_t initial_capacity)
     : capacity_(initial_capacity), size_(0) {
     table_ = new Entry[capacity_];
     std::memset(table_, 0, sizeof(Entry) * capacity_);
 }
 
-GRAPHLITE_FUNC NumericHashMap::~NumericHashMap() {
+inline NumericHashMap::~NumericHashMap() {
     delete[] table_;
 }
 
-GRAPHLITE_FUNC void NumericHashMap::put(uint64_t key, size_t value) {
+inline void NumericHashMap::put(uint64_t key, size_t value) {
     if (size_ * 10 >= capacity_ * 7) rehash(capacity_ * 2);
 
     size_t index = hash(key) % capacity_;
@@ -132,7 +131,7 @@ GRAPHLITE_FUNC void NumericHashMap::put(uint64_t key, size_t value) {
     size_++;
 }
 
-GRAPHLITE_FUNC bool NumericHashMap::get(uint64_t key, size_t& out_value) const {
+inline bool NumericHashMap::get(uint64_t key, size_t& out_value) const {
     size_t index = hash(key) % capacity_;
     size_t start_index = index;
 
@@ -147,7 +146,7 @@ GRAPHLITE_FUNC bool NumericHashMap::get(uint64_t key, size_t& out_value) const {
     return false;
 }
 
-GRAPHLITE_FUNC bool NumericHashMap::remove(uint64_t key) {
+inline bool NumericHashMap::remove(uint64_t key) {
     size_t index = hash(key) % capacity_;
     size_t start_index = index;
 
@@ -163,7 +162,6 @@ GRAPHLITE_FUNC bool NumericHashMap::remove(uint64_t key) {
     return false;
 }
 
-#endif // GRAPHLITE_IMPL_GUARD
 
 } // namespace utils
 } // namespace graphlite

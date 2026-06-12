@@ -14,38 +14,7 @@
 
 #pragma once
 
-// ============================================================
-// LIBRARY MODE CONFIGURATION (fmt/spdlog style)
-// ============================================================
-//
-// Có 3 trạng thái:
-//
-// 1. GRAPHLITE_HEADER_ONLY defined (bởi user hoặc CMake)
-//    → Mọi implementation inline trong header
-//    → Không cần link library
-//
-// 2. GRAPHLITE_IMPLEMENTATION defined (bởi src/graphlite.cpp)
-//    → Implementation compile 1 lần trong TU này
-//    → Tạo ra libgraphlite.a
-//
-// 3. Không define gì (user include bình thường, compiled mode)
-//    → Chỉ thấy declarations
-//    → Link với libgraphlite.a
-// ============================================================
 
-#if defined(GRAPHLITE_HEADER_ONLY)
-    #define GRAPHLITE_FUNC inline
-    #ifndef GRAPHLITE_IMPL_GUARD
-        #define GRAPHLITE_IMPL_GUARD
-    #endif
-#elif defined(GRAPHLITE_IMPLEMENTATION)
-    #define GRAPHLITE_FUNC
-    #ifndef GRAPHLITE_IMPL_GUARD
-        #define GRAPHLITE_IMPL_GUARD
-    #endif
-#endif
-// Nếu không define gì: GRAPHLITE_FUNC và GRAPHLITE_IMPL_GUARD không tồn tại
-// → Chỉ declarations visible → cần link library
 
 // ============================================================
 // SYSTEM INCLUDES

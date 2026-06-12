@@ -5,7 +5,7 @@ project(GraphLiteEngine VERSION 1.0 LANGUAGES CXX)
 # USER OPTIONS
 # ============================================================
 
-option(GRAPHLITE_HEADER_ONLY      "Build as header-only (no library compilation)" OFF)
+option(BUILD_SHARED_LIBS          "Build shared libraries"                        OFF)
 option(GRAPHLITE_BUILD_TESTS      "Build test suite"                              ON)
 option(GRAPHLITE_BUILD_BENCHMARKS "Build performance benchmarks"                  OFF)
 
@@ -13,32 +13,25 @@ option(GRAPHLITE_BUILD_BENCHMARKS "Build performance benchmarks"                
 # LIBRARY TARGET
 # ============================================================
 
-if(GRAPHLITE_HEADER_ONLY)
-    # --- HEADER-ONLY MODE ---
-    # Không compile gì — user include headers trực tiếp
-    add_library(graphlite INTERFACE)
-    target_include_directories(graphlite INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-    )
-    target_compile_definitions(graphlite INTERFACE GRAPHLITE_HEADER_ONLY)
-    target_compile_features(graphlite INTERFACE cxx_std_17)
-else()
-    # --- COMPILED MODE (default, recommended) ---
-    # Compile 1 lần thành libgraphlite.a, user link vào
-    add_library(graphlite STATIC src/graphlite.cpp)
-    target_include_directories(graphlite PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-    )
-    target_compile_features(graphlite PUBLIC cxx_std_17)
+file(GLOB_RECURSE GRAPHLITE_SOURCES "src/*.cpp")
 
-    # Platform-specific compile flags
-    if(UNIX)
-        target_compile_options(graphlite PRIVATE -O3 -Wall -Wextra -Wpedantic)
-    elseif(MSVC)
-        target_compile_options(graphlite PRIVATE /O2 /W4)
-    endif()
+add_library(graphlite ${GRAPHLITE_SOURCES})
+
+target_include_directories(graphlite
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_compile_features(graphlite PUBLIC cxx_std_17)
+
+# Platform-specific compile flags
+if(UNIX)
+    target_compile_options(graphlite PRIVATE -O3 -Wall -Wextra -Wpedantic)
+elseif(MSVC)
+    target_compile_options(graphlite PRIVATE /O2 /W4)
 endif()
 
 # ============================================================

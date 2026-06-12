@@ -14,7 +14,7 @@ GraphLite is a lightweight, embeddable Property Graph Database designed for appl
 | **32-Byte Edge Alignment** | Each `DiskEdge` is exactly 32 bytes — 2 edges per CPU cache line, maximizing L1/L2 throughput |
 | **23-Byte Opaque Payload** | Every edge carries a customizable binary payload — cast your own structs with `reinterpret_cast` |
 | **Cross-Platform** | Runs on Linux, macOS, and Windows via a compile-time platform abstraction layer |
-| **Dual Distribution** | Use as a **compiled static library** (fast builds) or **header-only** (zero build steps) |
+| **Dual Compilation** | Build as a **Static Library** (fast execution) or **Shared Library** (.so / .dll) |
 | **DFS + BFS Traversal** | Built-in traversal engines with Strategy Pattern callbacks for runtime branch pruning |
 | **Near-Zero Startup** | Memory-mapped files enable lazy loading — no deserialization step on startup |
 
@@ -31,9 +31,11 @@ GraphLite is a lightweight, embeddable Property Graph Database designed for appl
 
 ## 📦 Installation & Build
 
-### Option A: Compiled Static Library (Recommended)
+GraphLite is a standard C++ library. You can build it as a static or shared library.
 
-This is the **default and recommended** mode. GraphLite compiles once into a `.a` (Linux/macOS) or `.lib` (Windows) file, giving your project the **fastest possible compile times**.
+### Option A: Static Library (Default)
+
+This mode compiles GraphLite into a `.a` (Linux/macOS) or `.lib` (Windows) file.
 
 #### Linux / macOS
 
@@ -57,43 +59,16 @@ cmake --build build --config Release
 
 Output: `build\Release\graphlite.lib`
 
-#### Windows (MinGW)
-
-```powershell
-git clone https://github.com/Domi3012/graphlite.git
-cd GraphLite
-cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-```
-
-Output: `build/libgraphlite.a`
-
 ---
 
-### Option B: Header-Only Mode
+### Option B: Shared Library
 
-If you want **zero build steps** — just copy the `include/` folder and go. Enable with `GRAPHLITE_HEADER_ONLY`:
-
-#### Via CMake
+To build a shared library (`.so`, `.dylib`, or `.dll`), enable `BUILD_SHARED_LIBS`:
 
 ```bash
-cmake -B build -DGRAPHLITE_HEADER_ONLY=ON
-cmake --build build   # Only compiles your app, not the library
+cmake -B build -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
-
-#### Without CMake (Manual)
-
-Copy the `include/graphlite/` folder into your project, then compile with:
-
-```bash
-# Linux / macOS
-g++ -std=c++17 -O3 -DGRAPHLITE_HEADER_ONLY -I/path/to/include your_app.cpp -o your_app
-
-# Windows (MSVC)
-cl /std:c++17 /O2 /DGRAPHLITE_HEADER_ONLY /I"C:\path\to\include" your_app.cpp
-```
-
-> ⚠️ **Trade-off**: Header-only mode increases compile time for your project since every `.cpp` file that includes GraphLite will recompile the entire library. Use compiled mode for large projects.
 
 ---
 
@@ -111,12 +86,6 @@ git submodule add https://github.com/Domi3012/graphlite.git external/graphlite
 Then in your `CMakeLists.txt`:
 
 ```cmake
-# Compiled mode (default):
-add_subdirectory(external/graphlite)
-target_link_libraries(my_app PRIVATE graphlite)
-
-# Or header-only mode:
-set(GRAPHLITE_HEADER_ONLY ON CACHE BOOL "" FORCE)
 add_subdirectory(external/graphlite)
 target_link_libraries(my_app PRIVATE graphlite)
 ```
@@ -239,8 +208,8 @@ int main() {
 cmake -B build && cmake --build build
 
 # Run
-./build/run_test           # Linux/macOS
-.\build\Release\run_test   # Windows
+./build/test_phase1           # Linux/macOS
+.\build\Release\test_phase1   # Windows
 ```
 
 ## 📊 Running Benchmarks

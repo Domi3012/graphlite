@@ -1,6 +1,6 @@
 #pragma once
 #include "IStorage.h"
-#include "../utils/MiniVector.h"
+#include <graphlite/MiniVector.h>
 #include "../utils/NumericHashMap.h" // Dùng đúng Bảng băm Số nguyên
 #include <fstream>
 #include <string>
