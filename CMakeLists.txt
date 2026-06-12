@@ -43,9 +43,9 @@ if(GRAPHLITE_BUILD_TESTS)
     add_executable(test_phase1 tests/test_phase1.cpp)
     target_link_libraries(test_phase1 PRIVATE graphlite)
 
-    # Full integration test (sẽ cập nhật ở Phase 3+)
-    # add_executable(run_test tests/main.cpp)
-    # target_link_libraries(run_test PRIVATE graphlite)
+    # Phase 2 test (NodeStore, PageManager, persistence)
+    add_executable(test_phase2 tests/test_phase2.cpp)
+    target_link_libraries(test_phase2 PRIVATE graphlite)
 endif()
 
 # ============================================================
