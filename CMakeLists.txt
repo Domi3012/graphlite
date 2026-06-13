@@ -46,6 +46,10 @@ if(GRAPHLITE_BUILD_TESTS)
     # Phase 2 test (NodeStore, PageManager, persistence)
     add_executable(test_phase2 tests/test_phase2.cpp)
     target_link_libraries(test_phase2 PRIVATE graphlite)
+
+    # Phase 3 test (GraphDB integration, mmap, cache)
+    add_executable(test_phase3 tests/test_phase3.cpp)
+    target_link_libraries(test_phase3 PRIVATE graphlite)
 endif()
 
 # ============================================================
