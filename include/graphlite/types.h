@@ -74,10 +74,10 @@ constexpr SlotID NULL_SLOT = 0xFFFF;
 
 /**
  * @brief Kích thước payload tối đa cho mỗi edge.
- * @note 23 bytes = 32B(DiskEdge) - 4B(target) - 1B(type) - 2B(next_page) - 2B(next_slot)
- * GenericEdge (RAM view) cũng dùng 23B payload để tương thích 1:1 với DiskEdge.
+ * @note 15 bytes = 32B(DiskEdge) - 4B(target) - 1B(type) - 6B(next) - 6B(next_in)
+ * GenericEdge (RAM view) cũng dùng 15B payload để tương thích 1:1 với DiskEdge.
  */
-constexpr uint8_t MAX_PAYLOAD_SIZE = 23;
+constexpr uint8_t MAX_PAYLOAD_SIZE = 15;
 
 /**
  * @struct GenericEdge
@@ -126,9 +126,11 @@ struct GenericEdge {
 struct DiskEdge {
     NodeID   target_node;                    ///< 4 bytes — ID đỉnh đích.
     EdgeType edge_type;                      ///< 1 byte  — Loại cạnh.
-    uint8_t  payload[23];                    ///< 23 bytes — Payload vô danh.
-    uint16_t next_page;                      ///< 2 bytes — Page chứa edge kế tiếp (linked list).
-    uint16_t next_slot;                      ///< 2 bytes — Slot của edge kế tiếp.
+    uint8_t  payload[MAX_PAYLOAD_SIZE];      ///< 15 bytes — Payload vô danh.
+    uint32_t next_page;                      ///< 4 bytes — Page chứa out-edge kế tiếp
+    uint16_t next_slot;                      ///< 2 bytes — Slot chứa out-edge kế tiếp
+    uint32_t next_in_page;                   ///< 4 bytes — Page chứa in-edge kế tiếp
+    uint16_t next_in_slot;                   ///< 2 bytes — Slot chứa in-edge kế tiếp
 };
 static_assert(sizeof(DiskEdge) == 32, "DiskEdge must be exactly 32 bytes");
 
@@ -142,12 +144,18 @@ static_assert(sizeof(DiskEdge) == 32, "DiskEdge must be exactly 32 bytes");
  * Nằm trong flat array trên mmap: record = &array[node_id] → O(1).
  */
 struct NodeRecord {
-    uint32_t first_edge_page;                ///< 4 bytes — Page chứa edge đầu tiên.
-    uint32_t edge_count;                     ///< 4 bytes — Tổng số edges đi ra.
-    uint16_t first_edge_slot;                ///< 2 bytes — Slot chứa edge đầu tiên.
+    uint32_t first_edge_page;                ///< 4 bytes — Page chứa out-edge đầu tiên.
+    uint32_t edge_count;                     ///< 4 bytes — Tổng số out-edges.
+    uint16_t first_edge_slot;                ///< 2 bytes — Slot chứa out-edge đầu tiên.
     NodeType node_type;                      ///< 1 byte  — Phân loại đỉnh.
     uint8_t  flags;                          ///< 1 byte  — Cờ trạng thái (0=empty, 1=active).
-    uint8_t  _reserved[20];                  ///< 20 bytes — Dự trữ cho tương lai.
+    
+    // Bidirectional & Payload support (20 bytes)
+    uint32_t first_in_edge_page;             ///< 4 bytes — Page chứa in-edge đầu tiên.
+    uint32_t in_edge_count;                  ///< 4 bytes — Tổng số in-edges.
+    uint16_t first_in_edge_slot;             ///< 2 bytes — Slot chứa in-edge đầu tiên.
+    uint8_t  payload[8];                     ///< 8 bytes — Payload tùy chỉnh của Đỉnh.
+    uint8_t  _reserved[2];                   ///< 2 bytes — Dự trữ.
 };
 static_assert(sizeof(NodeRecord) == 32, "NodeRecord must be exactly 32 bytes");
 
