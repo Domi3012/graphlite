@@ -95,25 +95,30 @@ void test_graphdb_basic() {
 
         // Get Edges (Cache MISS -> Read from Disk -> Cache INSERT)
         auto start = std::chrono::high_resolution_clock::now();
-        const auto& edges = db.getEdges(u1);
+        const auto& edges = db.getOutEdges(u1);
         auto end = std::chrono::high_resolution_clock::now();
         auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         
-        TEST("getEdges size", edges.size() == 2);
+        TEST("getOutEdges size", edges.size() == 2);
         
         // Due to prependEdge, u3 is the first edge
-        TEST("getEdges first element", edges[0].target_node == u3);
-        TEST("getEdges second element", edges[1].target_node == u2);
+        TEST("getOutEdges first element", edges[0].target_node == u3);
+        TEST("getOutEdges second element", edges[1].target_node == u2);
 
         // Get Edges Again (Cache HIT)
         start = std::chrono::high_resolution_clock::now();
-        const auto& edges_cached = db.getEdges(u1);
+        const auto& edges_cached = db.getOutEdges(u1);
         end = std::chrono::high_resolution_clock::now();
         auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
-        TEST("getEdges cached size", edges_cached.size() == 2);
+        TEST("getOutEdges cached size", edges_cached.size() == 2);
         // Note: duration2 might be faster, but it's hard to assert reliably due to timer precision on small lists.
         std::cout << "    (Duration Miss: " << duration1 << "us, Duration Hit: " << duration2 << "us)\n";
+
+        // Check In-edges for u2
+        const auto& in_edges = db.getInEdges(u2);
+        TEST("getInEdges size for u2", in_edges.size() == 1);
+        TEST("getInEdges source node for u2", in_edges[0].source_node == u1);
 
         db.sync();
     }
@@ -160,10 +165,14 @@ void test_graphdb_persistence() {
         TEST("Reopen: Node count persisted", db.getNodeId("Node_999") != 0);
 
         // Verify Edges
-        const auto& edges = db.getEdges(u1);
+        const auto& edges = db.getOutEdges(u1);
         TEST("Reopen: Edge count", edges.size() == 2);
         TEST("Reopen: First edge target", edges[0].target_node == u1 && edges[0].edge_type == 2);
         TEST("Reopen: Second edge target", edges[1].target_node == u2 && edges[1].edge_type == 1);
+        
+        const auto& in_edges_u2 = db.getInEdges(u2);
+        TEST("Reopen: u2 In-edge count", in_edges_u2.size() == 1);
+        TEST("Reopen: u2 In-edge source", in_edges_u2[0].source_node == u1);
     }
 
     cleanup_db(db_dir);

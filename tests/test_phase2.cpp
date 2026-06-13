@@ -144,10 +144,13 @@ void test_page_manager() {
 
         // Write to edge
         DiskEdge* edge0 = mgr.getEdge(page0, slot0);
+        edge0->source_node = 1;
         edge0->target_node = 42;
         edge0->edge_type = 7;
-        edge0->next_page = NULL_SLOT;
+        edge0->next_page = NULL_PAGE;
         edge0->next_slot = NULL_SLOT;
+        edge0->next_in_page = NULL_PAGE;
+        edge0->next_in_slot = NULL_SLOT;
 
         // Read back
         const DiskEdge* edge0_read = mgr.getEdge(page0, slot0);
@@ -203,12 +206,15 @@ void test_edge_chain() {
     {
         PageManager mgr(db_dir);
 
-        uint32_t chain_page = NULL_PAGE;
-        uint16_t chain_slot = NULL_SLOT;
+        uint32_t out_chain_page = NULL_PAGE;
+        uint16_t out_chain_slot = NULL_SLOT;
+        uint32_t in_chain_page = NULL_PAGE;
+        uint16_t in_chain_slot = NULL_SLOT;
 
         // Prepend 100 edges
         for (int i = 0; i < 100; ++i) {
             GenericEdge edge;
+            edge.source_node = 999;
             edge.target_node = static_cast<NodeID>(i + 1);
             edge.edge_type = 1;
             std::memset(edge.payload, 0, MAX_PAYLOAD_SIZE);
@@ -216,14 +222,14 @@ void test_edge_chain() {
             uint32_t idx = static_cast<uint32_t>(i);
             std::memcpy(edge.payload, &idx, sizeof(uint32_t));
 
-            mgr.prependEdge(chain_page, chain_slot, edge);
+            mgr.prependBidirectionalEdge(out_chain_page, out_chain_slot, in_chain_page, in_chain_slot, edge);
         }
 
-        TEST("Chain head not NULL after prepend", chain_page != NULL_PAGE);
+        TEST("Chain head not NULL after prepend", out_chain_page != NULL_PAGE);
 
         // Read back
         MiniVector<GenericEdge> edges;
-        mgr.readEdgeChain(chain_page, chain_slot, edges);
+        mgr.readEdgeChain(out_chain_page, out_chain_slot, true, edges);
         TEST("readEdgeChain — 100 edges", edges.size() == 100);
 
         // Prepend pushes newest first → reversed order
@@ -331,25 +337,33 @@ void test_e2e_persistence() {
         rec->node_type = 5;
 
         // Prepend 10 edges
-        uint32_t chain_page = NULL_PAGE;
-        uint16_t chain_slot = NULL_SLOT;
+        uint32_t out_chain_page = NULL_PAGE;
+        uint16_t out_chain_slot = NULL_SLOT;
+        uint32_t in_chain_page = NULL_PAGE;
+        uint16_t in_chain_slot = NULL_SLOT;
 
         for (int i = 0; i < 10; ++i) {
             GenericEdge e;
+            e.source_node = nid;
             e.target_node = static_cast<NodeID>(100 + i);
             e.edge_type = 2;
             std::memset(e.payload, 0, MAX_PAYLOAD_SIZE);
-            edges.prependEdge(chain_page, chain_slot, e);
+            edges.prependBidirectionalEdge(out_chain_page, out_chain_slot, in_chain_page, in_chain_slot, e);
         }
 
         // Link chain head to node
         rec = nodes.getRecord(nid);  // Re-fetch after potential remap
-        rec->first_edge_page = chain_page;
-        rec->first_edge_slot = chain_slot;
+        rec->first_edge_page = out_chain_page;
+        rec->first_edge_slot = out_chain_slot;
         rec->edge_count = 10;
+        
+        // Also update in-edge head (even though nid is not the target, we just simulate)
+        rec->first_in_edge_page = in_chain_page;
+        rec->first_in_edge_slot = in_chain_slot;
+        rec->in_edge_count = 10;
 
-        saved_chain_page = chain_page;
-        saved_chain_slot = chain_slot;
+        saved_chain_page = out_chain_page;
+        saved_chain_slot = out_chain_slot;
 
         nodes.sync();
         edges.sync();
@@ -371,7 +385,7 @@ void test_e2e_persistence() {
 
         // Read edge chain
         MiniVector<GenericEdge> chain;
-        edges2.readEdgeChain(rec->first_edge_page, rec->first_edge_slot, chain);
+        edges2.readEdgeChain(rec->first_edge_page, rec->first_edge_slot, true, chain);
         TEST("E2E — chain has 10 edges", chain.size() == 10);
         // Last prepended = 109, should be first in chain
         TEST("E2E — first edge target=109", chain[0].target_node == 109);

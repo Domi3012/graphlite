@@ -21,7 +21,7 @@ void TraversalEngine::dfsRecursive(
     visited[current_node] = true;
     callback.onNodeVisited(current_node);
 
-    const auto& edges = db_.getEdges(current_node);
+    const auto& edges = db_.getOutEdges(current_node);
     for (size_t i = 0; i < edges.size(); ++i) {
         const GenericEdge& edge = edges[i];
         if (callback.shouldTraverse(current_node, edge)) {

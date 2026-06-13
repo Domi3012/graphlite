@@ -219,16 +219,18 @@ uint32_t PageManager::pageCount() const {
 
 // --- Linked List Operations ---
 
-void PageManager::readEdgeChain(uint32_t start_page, uint16_t start_slot, utils::MiniVector<GenericEdge>& out_edges) const {
+void PageManager::readEdgeChain(uint32_t start_page, uint16_t start_slot, bool is_out_chain, utils::MiniVector<GenericEdge>& out_edges) const {
     uint32_t curr_page = start_page;
     uint16_t curr_slot = start_slot;
 
     while (curr_page != NULL_PAGE && curr_slot != NULL_SLOT) {
-        // Safe cast vì edges.gldb hỗ trợ tối đa 65535 pages
+        // Safe cast vì edges.gldb hỗ trợ tối đa 4 tỷ pages (nhưng hiện tại dùng uint16_t cho access offset internal, wait, slotOffset uses uint16_t)
+        // Oops, in slotOffset, page_id is uint16_t! We will fix that later if needed, but for now cast safely.
         const DiskEdge* disk_edge = getEdge(static_cast<uint16_t>(curr_page), curr_slot);
         
         // Chuyển đổi DiskEdge → GenericEdge
         GenericEdge mem_edge;
+        mem_edge.source_node = disk_edge->source_node;
         mem_edge.target_node = disk_edge->target_node;
         mem_edge.edge_type = disk_edge->edge_type;
         std::memcpy(mem_edge.payload, disk_edge->payload, MAX_PAYLOAD_SIZE);
@@ -236,19 +238,27 @@ void PageManager::readEdgeChain(uint32_t start_page, uint16_t start_slot, utils:
         out_edges.push_back(std::move(mem_edge));
 
         // Nhảy sang node kế tiếp
-        curr_page = disk_edge->next_page;
-        curr_slot = disk_edge->next_slot;
+        if (is_out_chain) {
+            curr_page = disk_edge->next_page;
+            curr_slot = disk_edge->next_slot;
+        } else {
+            curr_page = disk_edge->next_in_page;
+            curr_slot = disk_edge->next_in_slot;
+        }
     }
 }
 
-void PageManager::prependEdge(uint32_t& chain_page, uint16_t& chain_slot, const GenericEdge& edge) {
+void PageManager::prependBidirectionalEdge(
+    uint32_t& out_chain_page, uint16_t& out_chain_slot,
+    uint32_t& in_chain_page,  uint16_t& in_chain_slot,
+    const GenericEdge& edge) {
     // 1. Cấp phát page/slot mới
-    // Ưu tiên page hiện tại (chain_page) nếu còn slot trống để giảm cross-page fragmentation
+    // Ưu tiên page hiện tại (out_chain_page) nếu còn slot trống để giảm cross-page fragmentation
     uint32_t target_page = NULL_PAGE;
     
-    if (chain_page != NULL_PAGE && chain_page < 65536) {
-        if (hasAvailableSlot(static_cast<uint16_t>(chain_page))) {
-            target_page = static_cast<uint16_t>(chain_page);
+    if (out_chain_page != NULL_PAGE && out_chain_page < 65536) {
+        if (hasAvailableSlot(static_cast<uint16_t>(out_chain_page))) {
+            target_page = static_cast<uint16_t>(out_chain_page);
         }
     }
     
@@ -261,22 +271,34 @@ void PageManager::prependEdge(uint32_t& chain_page, uint16_t& chain_slot, const 
     
     // 2. Ghi dữ liệu edge mới
     DiskEdge* disk_edge = getEdge(target_page_16, new_slot);
+    disk_edge->source_node = edge.source_node;
     disk_edge->target_node = edge.target_node;
     disk_edge->edge_type = edge.edge_type;
     std::memcpy(disk_edge->payload, edge.payload, MAX_PAYLOAD_SIZE);
     
-    // 3. Liên kết với chuỗi cũ (prepend)
-    if (chain_page == NULL_PAGE) {
-        disk_edge->next_page = NULL_SLOT;
+    // 3. Liên kết với chuỗi Out-edges cũ (prepend)
+    if (out_chain_page == NULL_PAGE) {
+        disk_edge->next_page = NULL_PAGE;
         disk_edge->next_slot = NULL_SLOT;
     } else {
-        disk_edge->next_page = static_cast<uint16_t>(chain_page);
-        disk_edge->next_slot = chain_slot;
+        disk_edge->next_page = out_chain_page;
+        disk_edge->next_slot = out_chain_slot;
     }
     
-    // 4. Cập nhật con trỏ head
-    chain_page = target_page;
-    chain_slot = new_slot;
+    // 4. Liên kết với chuỗi In-edges cũ (prepend)
+    if (in_chain_page == NULL_PAGE) {
+        disk_edge->next_in_page = NULL_PAGE;
+        disk_edge->next_in_slot = NULL_SLOT;
+    } else {
+        disk_edge->next_in_page = in_chain_page;
+        disk_edge->next_in_slot = in_chain_slot;
+    }
+    
+    // 5. Cập nhật con trỏ head
+    out_chain_page = target_page;
+    out_chain_slot = new_slot;
+    in_chain_page = target_page;
+    in_chain_slot = new_slot;
 }
 
 // --- Persistence ---

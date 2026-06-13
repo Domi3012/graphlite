@@ -191,17 +191,23 @@ public:
      * @brief Đọc toàn bộ linked list edges từ (start_page, start_slot)
      * @param start_page Page bắt đầu
      * @param start_slot Slot bắt đầu
+     * @param is_out_chain Nếu true, duyệt theo next_page/next_slot. Nếu false, duyệt theo next_in_page/next_in_slot.
      * @param out_edges Vector chứa kết quả trả về
      */
-    void readEdgeChain(uint32_t start_page, uint16_t start_slot, utils::MiniVector<GenericEdge>& out_edges) const;
+    void readEdgeChain(uint32_t start_page, uint16_t start_slot, bool is_out_chain, utils::MiniVector<GenericEdge>& out_edges) const;
 
     /**
-     * @brief Chèn edge mới vào ĐẦU danh sách liên kết.
-     * @param chain_page [in,out] Page của edge đầu tiên. Sẽ được cập nhật.
-     * @param chain_slot [in,out] Slot của edge đầu tiên. Sẽ được cập nhật.
+     * @brief Chèn edge mới vào ĐẦU danh sách liên kết của cả Out-edges và In-edges.
+     * @param out_chain_page [in,out] Page của out-edge đầu tiên. Sẽ được cập nhật.
+     * @param out_chain_slot [in,out] Slot của out-edge đầu tiên. Sẽ được cập nhật.
+     * @param in_chain_page  [in,out] Page của in-edge đầu tiên. Sẽ được cập nhật.
+     * @param in_chain_slot  [in,out] Slot của in-edge đầu tiên. Sẽ được cập nhật.
      * @param edge Dữ liệu edge cần chèn.
      */
-    void prependEdge(uint32_t& chain_page, uint16_t& chain_slot, const GenericEdge& edge);
+    void prependBidirectionalEdge(
+        uint32_t& out_chain_page, uint16_t& out_chain_slot,
+        uint32_t& in_chain_page,  uint16_t& in_chain_slot,
+        const GenericEdge& edge);
 
 
     // ==========================================

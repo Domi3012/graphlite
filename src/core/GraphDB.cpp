@@ -34,7 +34,8 @@ struct GraphDB::Impl {
     internal::NodeStore node_store_;
     internal::PageManager page_manager_;
     utils::StringPoolDictionary string_pool_;
-    internal::ClockCache<utils::MiniVector<GenericEdge>> edge_cache_;
+    internal::ClockCache<utils::MiniVector<GenericEdge>> out_edge_cache_;
+    internal::ClockCache<utils::MiniVector<GenericEdge>> in_edge_cache_;
 
     // Cached empty list trả về khi node không có edges
     static const utils::MiniVector<GenericEdge>& emptyEdgeList() {
@@ -52,7 +53,8 @@ struct GraphDB::Impl {
           node_store_(db_dir),
           page_manager_(db_dir),
           string_pool_(db_dir + "/strings.gldb"),
-          edge_cache_(8192) {}
+          out_edge_cache_(8192),
+          in_edge_cache_(8192) {}
 
     // Không cho copy
     Impl(const Impl&) = delete;
@@ -135,6 +137,9 @@ NodeID GraphDB::addNode(const std::string& node_name) {
         rec->first_edge_page = NULL_PAGE;
         rec->first_edge_slot = NULL_SLOT;
         rec->edge_count = 0;
+        rec->first_in_edge_page = NULL_PAGE;
+        rec->first_in_edge_slot = NULL_SLOT;
+        rec->in_edge_count = 0;
         rec->node_type = 0;  // Chưa gán type (có thể gán riêng)
     }
 
@@ -156,31 +161,46 @@ bool GraphDB::addEdge(NodeID from_id, NodeID to_id, EdgeType edge_type,
     pimpl_->node_store_.ensureCapacity(to_id);
 
     // 1. Tạo GenericEdge
-    GenericEdge edge(to_id, edge_type, payload, payload_size);
+    GenericEdge edge(from_id, to_id, edge_type, payload, payload_size);
 
-    // 2. Lấy chain head hiện tại từ NodeRecord
-    NodeRecord* rec = pimpl_->node_store_.getRecord(from_id);
-    uint32_t chain_page = rec->first_edge_page;
-    uint16_t chain_slot = rec->first_edge_slot;
+    // 2. Lấy out-chain head hiện tại từ NodeRecord của 'from'
+    NodeRecord* from_rec = pimpl_->node_store_.getRecord(from_id);
+    uint32_t out_chain_page = from_rec->first_edge_page;
+    uint16_t out_chain_slot = from_rec->first_edge_slot;
 
-    // 3. Prepend edge vào linked list trên mmap
-    pimpl_->page_manager_.prependEdge(chain_page, chain_slot, edge);
+    // 3. Lấy in-chain head hiện tại từ NodeRecord của 'to'
+    NodeRecord* to_rec = pimpl_->node_store_.getRecord(to_id);
+    uint32_t in_chain_page = to_rec->first_in_edge_page;
+    uint16_t in_chain_slot = to_rec->first_in_edge_slot;
 
-    // 4. Cập nhật NodeRecord (re-fetch vì prependEdge có thể grow → remap)
-    rec = pimpl_->node_store_.getRecord(from_id);
-    rec->first_edge_page = chain_page;
-    rec->first_edge_slot = chain_slot;
-    rec->edge_count++;
+    // 4. Prepend edge vào cả 2 linked lists trên mmap
+    pimpl_->page_manager_.prependBidirectionalEdge(
+        out_chain_page, out_chain_slot,
+        in_chain_page, in_chain_slot,
+        edge);
 
-    // 5. Invalidate cache — edge list cũ đã stale
-    pimpl_->edge_cache_.invalidate(from_id);
+    // 5. Cập nhật NodeRecord của 'from' (re-fetch vì mmap có thể remap)
+    from_rec = pimpl_->node_store_.getRecord(from_id);
+    from_rec->first_edge_page = out_chain_page;
+    from_rec->first_edge_slot = out_chain_slot;
+    from_rec->edge_count++;
+
+    // 6. Cập nhật NodeRecord của 'to'
+    to_rec = pimpl_->node_store_.getRecord(to_id);
+    to_rec->first_in_edge_page = in_chain_page;
+    to_rec->first_in_edge_slot = in_chain_slot;
+    to_rec->in_edge_count++;
+
+    // 7. Invalidate cache — edge list cũ đã stale
+    pimpl_->out_edge_cache_.invalidate(from_id);
+    pimpl_->in_edge_cache_.invalidate(to_id);
 
     return true;
 }
 
-const utils::MiniVector<GenericEdge>& GraphDB::getEdges(NodeID node_id) const {
+const utils::MiniVector<GenericEdge>& GraphDB::getOutEdges(NodeID node_id) const {
     // 1. Try cache
-    auto* cached = pimpl_->edge_cache_.lookup(node_id);
+    auto* cached = pimpl_->out_edge_cache_.lookup(node_id);
     if (cached) {
         return *cached;  // CACHE HIT
     }
@@ -196,13 +216,46 @@ const utils::MiniVector<GenericEdge>& GraphDB::getEdges(NodeID node_id) const {
     // 3. Read edge chain from mmap
     utils::MiniVector<GenericEdge> edges;
     pimpl_->page_manager_.readEdgeChain(
-        rec->first_edge_page, rec->first_edge_slot, edges);
+        rec->first_edge_page, rec->first_edge_slot, true, edges);
 
     // 4. Insert into cache
-    pimpl_->edge_cache_.insert(node_id, std::move(edges));
+    pimpl_->out_edge_cache_.insert(node_id, std::move(edges));
 
     // 5. Return from cache (pointer is now valid)
-    auto* result = pimpl_->edge_cache_.lookup(node_id);
+    auto* result = pimpl_->out_edge_cache_.lookup(node_id);
+    if (result) {
+        return *result;
+    }
+
+    // Fallback (shouldn't reach here)
+    return Impl::emptyEdgeList();
+}
+
+const utils::MiniVector<GenericEdge>& GraphDB::getInEdges(NodeID node_id) const {
+    // 1. Try cache
+    auto* cached = pimpl_->in_edge_cache_.lookup(node_id);
+    if (cached) {
+        return *cached;  // CACHE HIT
+    }
+
+    // 2. CACHE MISS — load from disk
+    pimpl_->node_store_.ensureCapacity(node_id);
+    const NodeRecord* rec = pimpl_->node_store_.getRecord(node_id);
+
+    if (rec->flags == 0 || rec->first_in_edge_page == NULL_PAGE) {
+        return Impl::emptyEdgeList();
+    }
+
+    // 3. Read edge chain from mmap
+    utils::MiniVector<GenericEdge> edges;
+    pimpl_->page_manager_.readEdgeChain(
+        rec->first_in_edge_page, rec->first_in_edge_slot, false, edges);
+
+    // 4. Insert into cache
+    pimpl_->in_edge_cache_.insert(node_id, std::move(edges));
+
+    // 5. Return from cache (pointer is now valid)
+    auto* result = pimpl_->in_edge_cache_.lookup(node_id);
     if (result) {
         return *result;
     }

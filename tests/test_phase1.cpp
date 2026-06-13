@@ -284,25 +284,28 @@ void test_binary_utils() {
 void test_generic_edge() {
     std::cout << "\n=== TEST: GenericEdge ===\n";
 
-    TEST("MAX_PAYLOAD_SIZE = 23", MAX_PAYLOAD_SIZE == 23);
+    TEST("MAX_PAYLOAD_SIZE = 11", MAX_PAYLOAD_SIZE == 11);
 
+#pragma pack(push, 1)
     struct MyPayload {
         uint64_t timestamp;
-        float    weight;
-        uint32_t flags;
+        uint16_t flags;
+        uint8_t  extra;
     };
-    static_assert(sizeof(MyPayload) <= MAX_PAYLOAD_SIZE, "MyPayload fits in 23B");
+#pragma pack(pop)
+    static_assert(sizeof(MyPayload) <= MAX_PAYLOAD_SIZE, "MyPayload fits in 11B");
 
-    MyPayload p = {1234567890ULL, 3.14f, 0xFF};
-    GenericEdge edge(42, 1, reinterpret_cast<uint8_t*>(&p), sizeof(p));
+    MyPayload p = {1234567890ULL, 0xFFFF, 0x42};
+    GenericEdge edge(10, 42, 1, reinterpret_cast<uint8_t*>(&p), sizeof(p));
 
+    TEST("Edge source", edge.source_node == 10);
     TEST("Edge target", edge.target_node == 42);
     TEST("Edge type", edge.edge_type == 1);
 
     auto* recovered = reinterpret_cast<const MyPayload*>(edge.payload);
     TEST("Payload timestamp", recovered->timestamp == 1234567890ULL);
-    TEST("Payload weight", recovered->weight == 3.14f);
-    TEST("Payload flags", recovered->flags == 0xFF);
+    TEST("Payload flags", recovered->flags == 0xFFFF);
+    TEST("Payload extra", recovered->extra == 0x42);
 
     // DiskEdge size
     TEST("DiskEdge is 32B", sizeof(DiskEdge) == 32);

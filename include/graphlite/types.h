@@ -74,10 +74,10 @@ constexpr SlotID NULL_SLOT = 0xFFFF;
 
 /**
  * @brief Kích thước payload tối đa cho mỗi edge.
- * @note 15 bytes = 32B(DiskEdge) - 4B(target) - 1B(type) - 6B(next) - 6B(next_in)
- * GenericEdge (RAM view) cũng dùng 15B payload để tương thích 1:1 với DiskEdge.
+ * @note 11 bytes = 32B(DiskEdge) - 4B(src) - 4B(tgt) - 1B(type) - 6B(next) - 6B(next_in)
+ * GenericEdge (RAM view) cũng dùng 11B payload để tương thích 1:1 với DiskEdge.
  */
-constexpr uint8_t MAX_PAYLOAD_SIZE = 15;
+constexpr uint8_t MAX_PAYLOAD_SIZE = 11;
 
 /**
  * @struct GenericEdge
@@ -90,22 +90,24 @@ constexpr uint8_t MAX_PAYLOAD_SIZE = 15;
  * @note sizeof(GenericEdge) = 28 bytes (4 + 1 + 23, no padding).
  */
 struct GenericEdge {
+    NodeID   source_node;                    ///< ID của đỉnh nguồn.
     NodeID   target_node;                    ///< ID của đỉnh đích mà cạnh này trỏ tới.
     EdgeType edge_type;                      ///< Mã phân loại mối quan hệ.
-    uint8_t  payload[MAX_PAYLOAD_SIZE];      ///< Vùng nhớ đệm chứa dữ liệu tùy chỉnh (23 bytes).
+    uint8_t  payload[MAX_PAYLOAD_SIZE];      ///< Vùng nhớ đệm chứa dữ liệu tùy chỉnh.
 
     /** @brief Constructor mặc định. */
     GenericEdge() = default;
 
     /**
      * @brief Constructor khởi tạo Cạnh an toàn.
+     * @param source ID của đỉnh nguồn.
      * @param target ID của đỉnh đích.
      * @param type Loại cạnh.
      * @param raw_payload Con trỏ trỏ tới struct dữ liệu (Ví dụ: &my_struct).
      * @param payload_size Kích thước thực tế của struct (dùng sizeof).
      */
-    GenericEdge(NodeID target, EdgeType type, const uint8_t* raw_payload, uint8_t payload_size)
-        : target_node(target), edge_type(type) {
+    GenericEdge(NodeID source, NodeID target, EdgeType type, const uint8_t* raw_payload, uint8_t payload_size)
+        : source_node(source), target_node(target), edge_type(type) {
         std::memset(payload, 0, MAX_PAYLOAD_SIZE);
         if (raw_payload != nullptr && payload_size > 0) {
             uint8_t copy_size = std::min(payload_size, MAX_PAYLOAD_SIZE);
@@ -124,13 +126,14 @@ struct GenericEdge {
  * Chứa linked-list pointers (next_page, next_slot) cho index-free adjacency.
  */
 struct DiskEdge {
+    NodeID   source_node;                    ///< 4 bytes — ID đỉnh nguồn.
     NodeID   target_node;                    ///< 4 bytes — ID đỉnh đích.
-    EdgeType edge_type;                      ///< 1 byte  — Loại cạnh.
-    uint8_t  payload[MAX_PAYLOAD_SIZE];      ///< 15 bytes — Payload vô danh.
     uint32_t next_page;                      ///< 4 bytes — Page chứa out-edge kế tiếp
-    uint16_t next_slot;                      ///< 2 bytes — Slot chứa out-edge kế tiếp
     uint32_t next_in_page;                   ///< 4 bytes — Page chứa in-edge kế tiếp
+    uint16_t next_slot;                      ///< 2 bytes — Slot chứa out-edge kế tiếp
     uint16_t next_in_slot;                   ///< 2 bytes — Slot chứa in-edge kế tiếp
+    EdgeType edge_type;                      ///< 1 byte  — Loại cạnh.
+    uint8_t  payload[MAX_PAYLOAD_SIZE];      ///< 11 bytes — Payload vô danh.
 };
 static_assert(sizeof(DiskEdge) == 32, "DiskEdge must be exactly 32 bytes");
 

@@ -47,7 +47,8 @@ public:
     std::string getNodeName(NodeID id) const;
     bool addEdge(NodeID from_id, NodeID to_id, EdgeType edge_type,
                  const uint8_t* payload = nullptr, uint8_t payload_size = 0);
-    const utils::MiniVector<GenericEdge>& getEdges(NodeID node_id) const;
+    const utils::MiniVector<GenericEdge>& getOutEdges(NodeID node_id) const;
+    const utils::MiniVector<GenericEdge>& getInEdges(NodeID node_id) const;
 
     // --- Storage API ---
     void sync();
