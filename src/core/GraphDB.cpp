@@ -154,6 +154,10 @@ std::string GraphDB::getNodeName(NodeID id) const {
     return pimpl_->string_pool_.get_string(id);
 }
 
+size_t GraphDB::getNodeCount() const {
+    return pimpl_->string_pool_.get_id_count();
+}
+
 bool GraphDB::addEdge(NodeID from_id, NodeID to_id, EdgeType edge_type,
                       const uint8_t* payload, uint8_t payload_size) {
     // Validate nodes exist

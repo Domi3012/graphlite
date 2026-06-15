@@ -112,6 +112,10 @@ public:
         data_[size_++] = std::move(value);
     }
 
+    void pop_back() {
+        if (size_ > 0) size_--;
+    }
+
     /** @brief Reset size về 0 — tái sử dụng RAM, không giải phóng. */
     void clear() {
         size_ = 0;
@@ -142,6 +146,9 @@ public:
 
     T&       operator[](size_t index)       { return data_[index]; }
     const T& operator[](size_t index) const { return data_[index]; }
+
+    T&       back()       { return data_[size_ - 1]; }
+    const T& back() const { return data_[size_ - 1]; }
 
     // ==========================================
     // ITERATORS (Pointer-based, zero overhead)

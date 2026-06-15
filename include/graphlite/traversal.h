@@ -49,21 +49,49 @@ class TraversalEngine {
 private:
     const GraphDB& db_;
 
-    void dfsRecursive(NodeID current_node, int current_depth, int max_depth,
-                      ITraversalCallback& callback, utils::MiniVector<bool>& visited);
-
 public:
     explicit TraversalEngine(const GraphDB& db);
 
     /**
-     * @brief Depth-First Search.
+     * @brief Depth-First Search (Iterative).
      * @param start_node Đỉnh bắt đầu.
      * @param max_depth Giới hạn độ sâu.
      * @param callback Chiến lược lọc.
      */
     void dfs(NodeID start_node, int max_depth, ITraversalCallback& callback);
 
-    // TODO Phase 4: BFS, iterative DFS
+    /**
+     * @brief Breadth-First Search.
+     * @param start_node Đỉnh bắt đầu.
+     * @param max_depth Giới hạn độ sâu.
+     * @param callback Chiến lược lọc.
+     */
+    void bfs(NodeID start_node, int max_depth, ITraversalCallback& callback);
 };
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
+/**
+ * @brief Tìm các đỉnh đích thoả mãn chuỗi kiểu cạnh chỉ định.
+ * 
+ * @param db Database.
+ * @param start_node Đỉnh xuất phát.
+ * @param pattern Mảng các kiểu cạnh liên tiếp.
+ * @return Danh sách các NodeID thoả mãn chuỗi pattern.
+ */
+utils::MiniVector<NodeID> MatchPathPattern(const GraphDB& db, NodeID start_node, const utils::MiniVector<EdgeType>& pattern);
+
+/**
+ * @brief Đếm số láng giềng thoả mãn điều kiện.
+ * 
+ * @param db Database.
+ * @param node Đỉnh cần xét.
+ * @param type Kiểu cạnh để xét.
+ * @param is_out_edge Nếu true đếm Out-edges, false đếm In-edges.
+ * @return Số lượng láng giềng.
+ */
+size_t CountNeighborsIf(const GraphDB& db, NodeID node, EdgeType type, bool is_out_edge = true);
 
 } // namespace graphlite

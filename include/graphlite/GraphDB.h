@@ -45,6 +45,7 @@ public:
     NodeID addNode(const std::string& node_name);
     NodeID getNodeId(const std::string& node_name);
     std::string getNodeName(NodeID id) const;
+    size_t getNodeCount() const;
     bool addEdge(NodeID from_id, NodeID to_id, EdgeType edge_type,
                  const uint8_t* payload = nullptr, uint8_t payload_size = 0);
     const utils::MiniVector<GenericEdge>& getOutEdges(NodeID node_id) const;

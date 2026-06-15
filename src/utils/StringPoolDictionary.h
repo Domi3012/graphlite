@@ -156,6 +156,12 @@ public:
     uint32_t get_id(const std::string& str) const;
 
     /**
+     * @brief Lấy số lượng ID đã được cấp phát.
+     * @return Số lượng ID.
+     */
+    uint32_t get_id_count() const;
+
+    /**
      * @brief Tra cứu ngược: ID → string — O(1).
      * @param id ID cần tra cứu.
      * @return Chuỗi tương ứng, hoặc "" nếu ID không tồn tại.

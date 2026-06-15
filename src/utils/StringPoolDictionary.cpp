@@ -397,14 +397,18 @@ uint32_t StringPoolDictionary::get_id(const std::string& str) const {
 }
 
 std::string StringPoolDictionary::get_string(uint32_t id) const {
-    if (id == 0 || id >= next_id_) {
-        return "";
-    }
-    if (id >= id_to_offset_capacity_) {
-        return "";
-    }
-    return std::string(pool_ + id_to_offset_[id]);
+    if (id == 0 || id >= next_id_) return "";
+    uint32_t offset = id_to_offset_[id];
+    return std::string(pool_ + offset);
 }
+
+uint32_t StringPoolDictionary::get_id_count() const {
+    return next_id_ - 1;
+}
+
+// ============================================================
+// Internal Helper
+// ============================================================
 
 void StringPoolDictionary::sync() {
     if (!is_mmap_mode_) return;

@@ -50,6 +50,19 @@ if(GRAPHLITE_BUILD_TESTS)
     # Phase 3 test (GraphDB integration, mmap, cache)
     add_executable(test_phase3 tests/test_phase3.cpp)
     target_link_libraries(test_phase3 PRIVATE graphlite)
+
+    # test_phase4 - Phase 4 (Traversal Engine)
+    add_executable(test_phase4 tests/test_phase4.cpp)
+    target_link_libraries(test_phase4 PRIVATE graphlite)
+
+    # ============================================================
+    # CTest Integration
+    # ============================================================
+    enable_testing()
+    add_test(NAME Phase1Test COMMAND test_phase1)
+    add_test(NAME Phase2Test COMMAND test_phase2)
+    add_test(NAME Phase3Test COMMAND test_phase3)
+    add_test(NAME Phase4Test COMMAND test_phase4)
 endif()
 
 # ============================================================
