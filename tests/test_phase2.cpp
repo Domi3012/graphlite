@@ -402,7 +402,7 @@ void test_e2e_persistence() {
 
 int main() {
     std::cout << "╔══════════════════════════════════════════╗\n";
-    std::cout << "║  GraphLite v1.0 — Phase 2 Test Suite     ║\n";
+    std::cout << "║  GraphLite v0.2 — Phase 2 Test Suite     ║\n";
     std::cout << "╚══════════════════════════════════════════╝\n";
 
     test_node_store();

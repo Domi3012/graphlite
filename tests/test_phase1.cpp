@@ -199,7 +199,7 @@ void test_mmap_file() {
 
         // Ghi dữ liệu
         auto* data = file.as<uint8_t>();
-        const char* msg = "GraphLite v1.0 mmap test!";
+        const char* msg = "GraphLite v0.2 mmap test!";
         std::memcpy(data, msg, std::strlen(msg) + 1);
 
         // Đọc lại
@@ -247,7 +247,7 @@ void test_mmap_file() {
 
         auto* data = file2.as<char>();
         TEST("Persistence — string preserved", 
-             std::strcmp(data, "GraphLite v1.0 mmap test!") == 0);
+             std::strcmp(data, "GraphLite v0.2 mmap test!") == 0);
     }
 
     // Cleanup
@@ -318,7 +318,7 @@ void test_generic_edge() {
 
 int main() {
     std::cout << "╔══════════════════════════════════════════╗\n";
-    std::cout << "║  GraphLite v1.0 — Phase 1 Test Suite     ║\n";
+    std::cout << "║  GraphLite v0.2 — Phase 1 Test Suite     ║\n";
     std::cout << "╚══════════════════════════════════════════╝\n";
 
     test_minivector();

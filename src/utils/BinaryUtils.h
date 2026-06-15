@@ -75,7 +75,7 @@ inline uint16_t readUint16(const uint8_t* buf, size_t& offset) {
 }
 
 // ============================================================
-// VECTOR API (backward-compatible với v0.1)
+// VECTOR API (backward-compatible với v0.2)
 // ============================================================
 
 inline void writeUint32(std::vector<uint8_t>& buffer, uint32_t value) {

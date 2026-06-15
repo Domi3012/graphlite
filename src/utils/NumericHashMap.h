@@ -25,7 +25,7 @@ namespace utils {
  *
  * Dùng cho:
  * - Bitcask KeyDir: NodeID → file offset  (v0.1, đã loại bỏ)
- * - CLOCK Cache: NodeID → ring index     (v1.0)
+ * - CLOCK Cache: NodeID → ring index     (v0.2)
  * - Bất kỳ mapping integer → integer nào
  */
 class NumericHashMap {
@@ -63,6 +63,9 @@ public:
 
     /** @brief Xóa entry (lazy delete — đánh dấu is_deleted). */
     bool remove(uint64_t key);
+
+    /** @brief Xóa toàn bộ dữ liệu. */
+    void clear();
 
     /** @brief Số entry đang sử dụng. */
     size_t size() const { return size_; }
@@ -162,6 +165,10 @@ inline bool NumericHashMap::remove(uint64_t key) {
     return false;
 }
 
+inline void NumericHashMap::clear() {
+    std::memset(table_, 0, sizeof(Entry) * capacity_);
+    size_ = 0;
+}
 
 } // namespace utils
 } // namespace graphlite

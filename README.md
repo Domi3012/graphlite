@@ -1,4 +1,4 @@
-# GraphLite Engine v1.0
+# GraphLite Engine v0.2
 
 > **A high-performance Hybrid Graph Database for C++17.**  
 > Memory-mapped storage · Index-free adjacency · CLOCK cache · Cross-platform
@@ -97,7 +97,7 @@ include(FetchContent)
 FetchContent_Declare(
     graphlite
     GIT_REPOSITORY https://github.com/Domi3012/graphlite.git
-    GIT_TAG        v1.0
+    GIT_TAG        v0.2
 )
 FetchContent_MakeAvailable(graphlite)
 target_link_libraries(my_app PRIVATE graphlite)

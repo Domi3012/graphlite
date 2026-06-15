@@ -94,4 +94,30 @@ utils::MiniVector<NodeID> MatchPathPattern(const GraphDB& db, NodeID start_node,
  */
 size_t CountNeighborsIf(const GraphDB& db, NodeID node, EdgeType type, bool is_out_edge = true);
 
+// ============================================================
+// EDGE SORTING
+// ============================================================
+
+/**
+ * @class IEdgeComparator
+ * @brief Interface so sánh để sắp xếp cạnh.
+ */
+class IEdgeComparator {
+public:
+    virtual ~IEdgeComparator() = default;
+    
+    /**
+     * @return true nếu a đứng trước b
+     */
+    virtual bool lessThan(const GenericEdge& a, const GenericEdge& b) const = 0;
+};
+
+/**
+ * @brief Sắp xếp danh sách cạnh tại chỗ bằng thuật toán QuickSort.
+ * 
+ * @param edges Danh sách cạnh cần sắp xếp (ví dụ: trả về từ getOutEdges)
+ * @param cmp Bộ so sánh
+ */
+void sortEdges(utils::MiniVector<GenericEdge>& edges, const IEdgeComparator& cmp);
+
 } // namespace graphlite

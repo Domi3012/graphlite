@@ -77,7 +77,8 @@ void PageManager::growPages(uint16_t count) {
 PageManager::PageManager(const std::string& db_dir)
     : file_(db_dir + "/edges.gldb",
             sizeof(EdgeFileHeader) +
-            static_cast<size_t>(DEFAULT_INITIAL_PAGES) * GLDB_PAGE_SIZE) {
+            static_cast<size_t>(DEFAULT_INITIAL_PAGES) * GLDB_PAGE_SIZE),
+      page_capacity_(0), active_page_(NULL_PAGE) {
 
     auto* hdr = fileHeader();
 
@@ -263,7 +264,12 @@ void PageManager::prependBidirectionalEdge(
     }
     
     if (target_page == NULL_PAGE) {
-        target_page = allocPage(); // Lấy page mới (hoặc từ free list)
+        if (active_page_ != NULL_PAGE && active_page_ < 65536 && hasAvailableSlot(static_cast<uint16_t>(active_page_))) {
+            target_page = active_page_;
+        } else {
+            target_page = allocPage(); // Lấy page mới (hoặc từ free list)
+            active_page_ = target_page;
+        }
     }
     
     uint16_t target_page_16 = static_cast<uint16_t>(target_page);

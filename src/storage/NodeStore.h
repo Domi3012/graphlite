@@ -127,6 +127,9 @@ public:
     /** @brief ID kế tiếp sẽ được cấp phát. */
     uint32_t nextId() const;
 
+    /** @brief Tăng số lượng đỉnh. */
+    void incrementNodeCount();
+
     /** @brief Số NodeRecord tối đa mà file hiện tại chứa được (trước khi cần grow). */
     uint32_t recordCapacity() const { return record_capacity_; }
 

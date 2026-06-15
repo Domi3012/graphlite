@@ -14,6 +14,14 @@
 
 namespace graphlite {
 
+struct EdgeInsertData {
+    NodeID from;
+    NodeID to;
+    EdgeType type;
+    uint8_t payload[11];
+    uint8_t payload_size;
+};
+
 /**
  * @class GraphDB
  * @brief Trái tim của hệ thống GraphLite — quản lý vòng đời đồ thị.
@@ -51,8 +59,13 @@ public:
     const utils::MiniVector<GenericEdge>& getOutEdges(NodeID node_id) const;
     const utils::MiniVector<GenericEdge>& getInEdges(NodeID node_id) const;
 
-    // --- Storage API ---
+    // --- Batch API ---
+    void insertEdgesBatch(const utils::MiniVector<EdgeInsertData>& edges);
+
+    // --- Storage & Memory API ---
     void sync();
+    void clearGraph();
+    size_t getMemoryUsage() const;
 };
 
 } // namespace graphlite

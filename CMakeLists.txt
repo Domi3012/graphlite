@@ -66,7 +66,13 @@ if(GRAPHLITE_BUILD_TESTS)
 endif()
 
 # ============================================================
-# BENCHMARKS
+# Benchmarks
+# ============================================================
+add_executable(benchmark_core benchmarks/benchmark_core.cpp)
+target_link_libraries(benchmark_core PRIVATE graphlite)
+
+# ============================================================
+# C++ Standard and Warnings
 # ============================================================
 
 if(GRAPHLITE_BUILD_BENCHMARKS)

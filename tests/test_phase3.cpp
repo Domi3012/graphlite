@@ -184,7 +184,7 @@ void test_graphdb_persistence() {
 
 int main() {
     std::cout << "╔══════════════════════════════════════════╗\n";
-    std::cout << "║  GraphLite v1.0 — Phase 3 Test Suite     ║\n";
+    std::cout << "║  GraphLite v0.2 — Phase 3 Test Suite     ║\n";
     std::cout << "╚══════════════════════════════════════════╝\n";
 
     test_graphdb_basic();

@@ -116,6 +116,10 @@ uint32_t NodeStore::nextId() const {
     return header()->next_id;
 }
 
+void NodeStore::incrementNodeCount() {
+    header()->node_count++;
+}
+
 // --- Persistence ---
 
 void NodeStore::sync() {

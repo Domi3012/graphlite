@@ -269,7 +269,89 @@ const utils::MiniVector<GenericEdge>& GraphDB::getInEdges(NodeID node_id) const 
 }
 
 // ============================================================
-// STORAGE API
+// BATCH API
+// ============================================================
+
+void GraphDB::insertEdgesBatch(const utils::MiniVector<EdgeInsertData>& edges) {
+    if (edges.empty()) return;
+
+    // 0. Đảm bảo sức chứa trước
+    NodeID max_id = 0;
+    for (size_t i = 0; i < edges.size(); ++i) {
+        if (edges[i].from > max_id) max_id = edges[i].from;
+        if (edges[i].to > max_id) max_id = edges[i].to;
+    }
+    pimpl_->node_store_.ensureCapacity(max_id);
+
+    // 1. Đăng ký tất cả các Node (để tự động tăng node_count và string pool, cũng như initialize record)
+    for (size_t i = 0; i < edges.size(); ++i) {
+        // Tạm thời hack: Nếu node chưa được set flag = 1, ta khởi tạo nó
+        NodeRecord* from_rec = pimpl_->node_store_.getRecord(edges[i].from);
+        if (from_rec->flags == 0) {
+            from_rec->flags = 1;
+            from_rec->first_edge_page = NULL_PAGE;
+            from_rec->first_edge_slot = NULL_SLOT;
+            from_rec->first_in_edge_page = NULL_PAGE;
+            from_rec->first_in_edge_slot = NULL_SLOT;
+            from_rec->edge_count = 0;
+            from_rec->in_edge_count = 0;
+            pimpl_->node_store_.incrementNodeCount();
+            
+            // Dummy string cho ID này để string pool next_id_ theo kịp
+            pimpl_->string_pool_.get_or_create_id(std::to_string(edges[i].from));
+        }
+        
+        NodeRecord* to_rec = pimpl_->node_store_.getRecord(edges[i].to);
+        if (to_rec->flags == 0) {
+            to_rec->flags = 1;
+            to_rec->first_edge_page = NULL_PAGE;
+            to_rec->first_edge_slot = NULL_SLOT;
+            to_rec->first_in_edge_page = NULL_PAGE;
+            to_rec->first_in_edge_slot = NULL_SLOT;
+            to_rec->edge_count = 0;
+            to_rec->in_edge_count = 0;
+            pimpl_->node_store_.incrementNodeCount();
+            
+            pimpl_->string_pool_.get_or_create_id(std::to_string(edges[i].to));
+        }
+    }
+
+    // 2. Chèn tất cả
+    for (size_t i = 0; i < edges.size(); ++i) {
+        const auto& item = edges[i];
+        GenericEdge edge(item.from, item.to, item.type, item.payload, item.payload_size);
+
+        NodeRecord* from_rec = pimpl_->node_store_.getRecord(item.from);
+        uint32_t out_chain_page = from_rec->first_edge_page;
+        uint16_t out_chain_slot = from_rec->first_edge_slot;
+
+        NodeRecord* to_rec = pimpl_->node_store_.getRecord(item.to);
+        uint32_t in_chain_page = to_rec->first_in_edge_page;
+        uint16_t in_chain_slot = to_rec->first_in_edge_slot;
+
+        pimpl_->page_manager_.prependBidirectionalEdge(
+            out_chain_page, out_chain_slot,
+            in_chain_page, in_chain_slot,
+            edge);
+
+        from_rec = pimpl_->node_store_.getRecord(item.from);
+        from_rec->first_edge_page = out_chain_page;
+        from_rec->first_edge_slot = out_chain_slot;
+        from_rec->edge_count++;
+
+        to_rec = pimpl_->node_store_.getRecord(item.to);
+        to_rec->first_in_edge_page = in_chain_page;
+        to_rec->first_in_edge_slot = in_chain_slot;
+        to_rec->in_edge_count++;
+    }
+
+    // 3. Clear cache 1 lần duy nhất
+    pimpl_->out_edge_cache_.clear();
+    pimpl_->in_edge_cache_.clear();
+}
+
+// ============================================================
+// STORAGE & MEMORY API
 // ============================================================
 
 void GraphDB::sync() {
@@ -277,6 +359,38 @@ void GraphDB::sync() {
     pimpl_->node_store_.sync();
     pimpl_->page_manager_.sync();
     pimpl_->string_pool_.sync();
+}
+
+void GraphDB::clearGraph() {
+    if (!pimpl_) return;
+    std::string dir = pimpl_->db_dir_;
+    
+    // Hủy Impl hiện tại để giải phóng Mmap và close file handles
+    pimpl_.reset();
+    
+    // Xoá các file trên đĩa
+    std::remove((dir + "/nodes.gldb").c_str());
+    std::remove((dir + "/edges.gldb").c_str());
+    std::remove((dir + "/strings.gldb").c_str());
+    
+    // Tái tạo lại Impl
+    ensure_directory(dir);
+    pimpl_ = std::make_unique<Impl>(dir);
+}
+
+size_t GraphDB::getMemoryUsage() const {
+    size_t total = 0;
+    struct stat st;
+    std::string dir = pimpl_->db_dir_;
+    
+    if (stat((dir + "/nodes.gldb").c_str(), &st) == 0) total += st.st_size;
+    if (stat((dir + "/edges.gldb").c_str(), &st) == 0) total += st.st_size;
+    if (stat((dir + "/strings.gldb").c_str(), &st) == 0) total += st.st_size;
+    
+    // Cộng thêm kích thước RAM dự tính của Cache (metadata + buffers)
+    total += 8192 * sizeof(utils::MiniVector<GenericEdge>) * 2; // out_cache, in_cache
+    
+    return total;
 }
 
 } // namespace graphlite

@@ -1,6 +1,6 @@
 /**
  * @file stress_test.cpp
- * @brief Benchmark: Tải lớn + Đo RAM + Đo throughput cho GraphLite v1.0.
+ * @brief Benchmark: Tải lớn + Đo RAM + Đo throughput cho GraphLite v0.2.
  * 
  * Sẽ implement sau Phase 4 (Integration).
  * 

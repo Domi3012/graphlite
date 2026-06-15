@@ -59,6 +59,8 @@ namespace internal {
 class PageManager {
 private:
     MmapFile file_;
+    uint32_t active_page_;
+    uint32_t page_capacity_;
 
     // ==========================================
     // INTERNAL HELPERS
@@ -214,8 +216,11 @@ public:
     // METADATA
     // ==========================================
 
-    /** @brief Tổng số pages đã cấp phát (kể cả đang free). */
+    /** @brief Tổng số pages đã cấp phát. */
     uint32_t pageCount() const;
+
+    /** @brief Trả về dung lượng (capacity) hiện tại (pages). */
+    uint32_t pageCapacity() const { return page_capacity_; }
 
     // ==========================================
     // PERSISTENCE

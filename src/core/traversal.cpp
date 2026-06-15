@@ -140,4 +140,33 @@ size_t CountNeighborsIf(const GraphDB& db, NodeID node, EdgeType type, bool is_o
     return count;
 }
 
+// ============================================================
+// EDGE SORTING (QuickSort)
+// ============================================================
+
+static void quick_sort(utils::MiniVector<GenericEdge>& arr, int low, int high, const IEdgeComparator& cmp) {
+    if (low < high) {
+        // Partition
+        const GenericEdge& pivot = arr[high];
+        int i = low - 1;
+        for (int j = low; j < high; ++j) {
+            if (cmp.lessThan(arr[j], pivot)) {
+                ++i;
+                std::swap(arr[i], arr[j]);
+            }
+        }
+        std::swap(arr[i + 1], arr[high]);
+        int pi = i + 1;
+
+        quick_sort(arr, low, pi - 1, cmp);
+        quick_sort(arr, pi + 1, high, cmp);
+    }
+}
+
+void sortEdges(utils::MiniVector<GenericEdge>& edges, const IEdgeComparator& cmp) {
+    if (edges.size() > 1) {
+        quick_sort(edges, 0, static_cast<int>(edges.size()) - 1, cmp);
+    }
+}
+
 } // namespace graphlite

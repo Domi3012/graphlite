@@ -228,8 +228,7 @@ public:
         }
         size_ = 0;
         hand_ = 0;
-        // NumericHashMap doesn't have clear(), so rebuild
-        // (index_ entries become stale — lookups will miss, which is safe)
+        index_.clear();
     }
 
     // ==========================================

@@ -148,7 +148,7 @@ void test_traversal() {
 
 int main() {
     std::cout << "╔══════════════════════════════════════════╗\n";
-    std::cout << "║  GraphLite v1.0 — Phase 4 Test Suite     ║\n";
+    std::cout << "║  GraphLite v0.2 — Phase 4 Test Suite     ║\n";
     std::cout << "╚══════════════════════════════════════════╝\n";
 
     test_miniqueue();
